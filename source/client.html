@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html>
+<head><title>Chat Assinado</title></head>
+<body>
+  <h2>Chat</h2>
+  <textarea id="log" cols="60" rows="10" readonly></textarea><br>
+  <input id="msg" placeholder="Digite sua mensagem" />
+  <button onclick="sendMessage()">Enviar</button>
+
+  <script src="https://cdn.jsdelivr.net/npm/node-forge@1.3.1/dist/forge.min.js"></script>
+  <script>
+    const ws = new WebSocket("wss://localhost:8443");
+
+    const privateKeyPEM = `-----BEGIN PRIVATE KEY-----
+MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQCr53s9SH95/OTv
+8Pd4/q7anI/rPgJam47vScj5Mb1aLlwJA4Cim5015+aXtNxTl1DKdW41ozURc6hg
+9+wx8lftrCvrhWlF4K3W1lbzFUa7YhALxsANWgLgrXZVwqplKLAWS5gLxAJYnbls
+MtNY53zXZWmjTAXoEz3VGWLJpaFkmFqnFY7nYswe+qU5cDyhyfBUyyDPHGNuNo5V
+r7F0uczD21f9lWE+EXbRPmGvxlAHlpNWCotP2wYghmVmEgu8NEM7c6qgwoOtPAW7
+pYQc/6Q3ZN68Tnfe7MOKxknmvgLZIxWwqXmhT7G1T2XmNP1CVPkji+uL1geGwu9r
+bSkbzF8zAgMBAAECgf8jW/n20Dzhq5W8nKUHX/1hjnRc2sl4vsn/bmqQ13svnwi7
+IsCqfAb8CNkOGB7o999pxaLsgHZ+NLEjrM3veCZ1jbgBwMb64rw9llJZu142R+7B
+pciKb8o1NvI0iVYk/2iyOszp73u0e0OvcFkjs71RuWjEoKH0tZS4R17N8xSklWiV
+9QRXksDmo0+7P47FqUKbQoOKfChVc33KL6ud453mbLzEdk/qZ/en5sMeYMaeTHqI
+zdUpDsT1zF0EWF+Gf4psqMM+YCxvTuKHvxSMxqYhf2sPhUq6JiggYORgAaZ6BTcT
+qJNdX7ge2hH6FQSeW1WxYMSctBbdJQ5cIj2aoWECgYEA7ScQtOYPqDuObzaVTz5r
+6xJnae2fpPevu6sHvmjg6Zfo1nxtp0TutmNpnUn3atwOZ1KMU2jKO7lR5FGB54bw
+Zp+XjHTRGrbUqqUKkn75D40kj8rz5wGfXQTj+mTRF5o6sRAJCGS2RSK4f5d5PEet
+c4fd/0lTFBccT3wqjaWEk9MCgYEAuZDriFW1L6fyymmNp9HdCC4UEKMPasc81JDY
+X/twH6/Gd51axQ7Y3IeLWLSz5tnNTCtQbIeEyUr8bka5OznbRcOzCUdJ1RgjyWMc
+xfU1lwl9eqtJPmuZMPxPOMgk1PBrvx4bSZdsXcJZEyZ17Oi2VWQENsQ/1CX5Jh3t
+78RvyyECgYEA0EpkcQ4zqEYO1v0w7LXdoUy7yZzsf78P+RvBpGqHSIOk/GWzBZwU
+sdrk00I47gEzIWquV0ANh6FAHPG9z/WDxg7b04ByfC0i4nIss/iTliYYe7b8u+N/
+7foypiTQRROwAv4bgOS79kMFmwMWd2xZGsS1pdfoARg/REzBL0G2DQMCgYEAkM3i
+zle7dL3FO2iU7uFYbxqt87GaxUNGV8XT40ptW3yqDgtPmriUR7rJ5WXVgQ5zIr4m
+GxrBZubKBy/POcVTM6ScIGBt4AjfXDaobF2F/R+duEzTcg860rwBAhlEjJo0KkZP
+GuU73gpbwhLgMQgDyKyskSQhfuZG/xSZ6OFML6ECgYEAgAmJf4qiGOlhIC1qvoIq
+q5z8iKCykHq2/DwIGZkupUbFKdEf95sFywBuM2L7HS2b+QPd8sXzqA/WTNeifnTc
+GI9/EIcMwIzLJNl2ii2N88wHqp1TS2bEfuFWDdjAqRcS1d/ioa7YhD085GIZmVXB
+2lQ2w38/8GyLujS9WK548WY=
+-----END PRIVATE KEY-----`;
+
+    const certPEM = `-----BEGIN CERTIFICATE-----
+MIIC/zCCAeegAwIBAgIUHavJOtYm3Kq5lAMd/rHKMqcAMNgwDQYJKoZIhvcNAQEL
+BQAwDzENMAsGA1UEAwwESm9hbzAeFw0yNTA2MjAwNDMyNTZaFw0yNjA2MjAwNDMy
+NTZaMA8xDTALBgNVBAMMBEpvYW8wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEK
+AoIBAQCr53s9SH95/OTv8Pd4/q7anI/rPgJam47vScj5Mb1aLlwJA4Cim5015+aX
+tNxTl1DKdW41ozURc6hg9+wx8lftrCvrhWlF4K3W1lbzFUa7YhALxsANWgLgrXZV
+wqplKLAWS5gLxAJYnblsMtNY53zXZWmjTAXoEz3VGWLJpaFkmFqnFY7nYswe+qU5
+cDyhyfBUyyDPHGNuNo5Vr7F0uczD21f9lWE+EXbRPmGvxlAHlpNWCotP2wYghmVm
+Egu8NEM7c6qgwoOtPAW7pYQc/6Q3ZN68Tnfe7MOKxknmvgLZIxWwqXmhT7G1T2Xm
+NP1CVPkji+uL1geGwu9rbSkbzF8zAgMBAAGjUzBRMB0GA1UdDgQWBBQ0JOmBWV9h
+xgg2evA+hKimbO22czAfBgNVHSMEGDAWgBQ0JOmBWV9hxgg2evA+hKimbO22czAP
+BgNVHRMBAf8EBTADAQH/MA0GCSqGSIb3DQEBCwUAA4IBAQBykIaMJzpwDoa08rSC
+rRl38er4UbUKHgiJvuegAHavt3T775AnQM75S2q6pqDgvmQXwObuN/Gv+yeh+jUb
+Hmwb0VyXRfpC6ABZ+uP3ccw++iz7pJTkWWZHEsmXogmxAJM5edgmlRQYOtiNxwd4
+w3MPmOHS+vMaxzDB3Cql5dLL/2GBKjNvG9xy3+L4r9EV9B5NCosfbuuaBbJLIy05
+i+mNjKH8hNnsCggZ0JgN7nAUQpbLMob3ary60sH2G3LDH1Mdp1fBPXpZMXM5Xjai
+0KLcQkTIhj1w+8Iik3zk3qDXFABLM2k+cjIMyr6Qv2FZb1bNGKVlsV05A41ZY3gV
+E5cg
+-----END CERTIFICATE-----`;
+
+    const privateKey = forge.pki.privateKeyFromPem(privateKeyPEM);
+
+    function sendMessage() {
+      const msg = document.getElementById("msg").value;
+      const md = forge.md.sha256.create();
+      md.update(msg, "utf8");
+      const signature = forge.util.encode64(privateKey.sign(md));
+      ws.send(JSON.stringify({
+        message: msg,
+        signature: signature,
+        certificate: certPEM
+      }));
+    }
+
+    ws.onmessage = e => {
+      const data = JSON.parse(e.data);
+      if (data.error) {
+        alert(data.error);
+      } else if (data.type === "history") {
+        data.data.forEach(entry => {
+          document.getElementById("log").value += `${entry.sender}: ${entry.message}\n`;
+        });
+      } else {
+        document.getElementById("log").value += `${data.from}: ${data.message}\n`;
+      }
+    };
+
+  </script>
+</body>
+</html>

@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html>
+<head><title>Chat Assinado</title></head>
+<body>
+  <h2>Chat</h2>
+  <textarea id="log" cols="60" rows="10" readonly></textarea><br>
+  <input id="msg" placeholder="Digite sua mensagem" />
+  <input id="dest" placeholder="Destinatário (CN) ou vazio para público" />
+  <button onclick="sendMessage()">Enviar</button>
+
+  <script src="https://cdn.jsdelivr.net/npm/node-forge@1.3.1/dist/forge.min.js"></script>
+  <script>
+    const ws = new WebSocket("wss://localhost:8443");
+
+    const privateKeyPEM = `-----BEGIN PRIVATE KEY-----
+MIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQDWe8tKfWQKzKxC
+SN2P2yqMadneYmYlHKdMzqKniGsgqP5GdzGYNgPruvBKxd2Sirauoamv70+gMoIA
+1hBmhsDcc0dKHl2o/WURb1bAgf6lCMWA9ImKeZsEwv81zSFI3eNYncGXxL820Hr2
+MDrp8MV/jfJMRsJmNWTnBTfehKML1iE3NFrZvnwO0EJarFl3rujWfNC6ShOCxHaT
+OGiwenIIFU8eD7JdRckdrkyyo53tgM5EEAznimR3KvyNR+0WBiDZHkhXO2W5uQc/
+qzJuS5UW6pgKdNOYMsqAv8EiQ7JpcNUn+BgIEM+WXTsXO+U7ifeUwzPum4qGIiVf
+wvWR+SkPAgMBAAECggEAJeNeaP03g/Td5SOsB/KGVKGKPA+TzbB/GUFTWFbv3agc
+quP5XdME5Ep0kjDb0DwywyyJpiuXHExvzKgD46igPxEaIcy1bNm+VdMeNwl/qzWe
+dgY8mbqbmL69iIqA+7c+pvPPM/kscgln/z9L2PGQYdT4XWMOijGabnjsgqFZkAhj
+gyd43kVXSdpVR/h+7eBK8sDb7etbnAxX3Klvbu5d6rGRY2nOBn8UDk3RgpQMa7s2
+p43H3S0o6Vhd80jHLklW/X4JBB63rVLa6qy84ABJOVkiHExuyLcrmoTCFTrb5m4J
+DybhnYMbHbWc2zmXWrrQve1puQDbxuYs7wC9du5LGQKBgQD6dvrlObKbKeDMT/PQ
+6pyU5REqnq1s/IwuzUl16B/TD1fxLhRLrCdW9JTpTvGLLSvhDREh27iUzb4vwtEK
+IZ2hFefjFZa09sqnuNrfwwghO/7gQ9SfA1XXjXi5wXco2bm7rY8mTOctClC6M/iF
+rK78A8f2333d1iUab5k7qbrzmwKBgQDbOT+KPXDVTYmP840xy1YbiEGY6VIvWXFE
+XiEZHj6bf6Ol3u3FG15iTBWcboS99BsdfgMy5EJdCjqNmaUz3TNKHt6Yr/hTWyTa
+kpuHCbQoFShznVnt1t7un4GR+0IbuH4gSOaSgTBjOFXzIEjd1lH7v7l17IpuIrud
+V9XGkCD5nQKBgEgBVqX5zXAwPPFf9u9T04o2xJWlIqSXglGeMQVVo3iRC65Jmgob
+RwAHtpvQVz600M2VbRx3x3v4Hjoq3t/zxBZgbtbpCPejj6ViToJP1pF/ZwngVksU
+sWQTxuZYSUKUPYJIJkRTjY50TbsKX+NGPtQy3hUKMWxKOUZ9WOc/J4ELAoGAD9hu
+eE6CllhZZhdDkGLTIYBSxXuv3g5H+poXKFqgSdsK+BVJ+GJHCzHWqgzu+U/omdQe
+5RHMni78FnoRj9MgPu5GRqEJgPTokAfix/ryk6cb2md4NZG/YV4UHnobyCcorqq2
+R8agubs7sywVODuih2DPRe/H/bfy+ad8ozKNv50CgYBRrC3dvCcklC2OFE0GDGQK
+dfDtCRoB7TnJjL3AnWs+ptiO/zzPS3C3+jM49sPbfhgeL/E3sQJEAMocalJlKoPt
+otHFGb2CUmaroL4tBwNL8zOcByv6SI/zhHf4zEpdOJthKekHmmhJmPO9K+nWDp+z
+zQxB6QdbHtwqzbt4D9veaQ==
+-----END PRIVATE KEY-----`;
+
+    const certPEM = `-----BEGIN CERTIFICATE-----
+MIIC/zCCAeegAwIBAgIUMwjtuedsORsNX3G4KjVXBMDbDgYwDQYJKoZIhvcNAQEL
+BQAwDzENMAsGA1UEAwwESm9zZTAeFw0yNTA2MjAwNDMyMzVaFw0yNjA2MjAwNDMy
+MzVaMA8xDTALBgNVBAMMBEpvc2UwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEK
+AoIBAQDWe8tKfWQKzKxCSN2P2yqMadneYmYlHKdMzqKniGsgqP5GdzGYNgPruvBK
+xd2Sirauoamv70+gMoIA1hBmhsDcc0dKHl2o/WURb1bAgf6lCMWA9ImKeZsEwv81
+zSFI3eNYncGXxL820Hr2MDrp8MV/jfJMRsJmNWTnBTfehKML1iE3NFrZvnwO0EJa
+rFl3rujWfNC6ShOCxHaTOGiwenIIFU8eD7JdRckdrkyyo53tgM5EEAznimR3KvyN
+R+0WBiDZHkhXO2W5uQc/qzJuS5UW6pgKdNOYMsqAv8EiQ7JpcNUn+BgIEM+WXTsX
+O+U7ifeUwzPum4qGIiVfwvWR+SkPAgMBAAGjUzBRMB0GA1UdDgQWBBQo4IcDOUuK
+KWQLCJ2nRYDuSXjpATAfBgNVHSMEGDAWgBQo4IcDOUuKKWQLCJ2nRYDuSXjpATAP
+BgNVHRMBAf8EBTADAQH/MA0GCSqGSIb3DQEBCwUAA4IBAQCfoUsmWlAbJ2pgFNKN
+aCC37HEyhFVZwvkTdEnoC1m5QSw0C5jQQF6syPjx1b9QlpQphAcblwNDxuIwTp5x
+Vgj9owqaaD+nFAeGzMcy1WiNSpzuhosGplfkqFw6u9BHAy2tEp9fefrrcGpdR8Wj
+3U3dsGb6RyFUl6KofN0iJ4tOklVgssFuc2XOdjUstHRYWnyuRLdTwzaV7b/Qh79g
+23hjbwW6O5u5ZPon0tuGhyLYAXNA0XzY7rGu1OCUJg0Kr85ui2qNj1hXQ2byIThR
+kGCSv8pBcCHFLkv5glXrNGIEeSLjnxhlYEHpI9GbzrKIEkX4KU8RO0zRUC75Mb8j
+f6qJ
+-----END CERTIFICATE-----`;
+
+    const privateKey = forge.pki.privateKeyFromPem(privateKeyPEM);
+
+    function sendMessage() {
+      const msg = document.getElementById("msg").value;
+      const to = document.getElementById("dest").value || null;
+
+      const md = forge.md.sha256.create();
+      md.update(msg, "utf8");
+      const signature = forge.util.encode64(privateKey.sign(md));
+
+      ws.send(JSON.stringify({
+        message: msg,
+        to,
+        signature,
+        certificate: certPEM
+      }));
+    }
+
+    ws.onmessage = e => {
+      const data = JSON.parse(e.data);
+      if (data.error) {
+        alert(data.error);
+      } else if (data.type === "history") {
+        data.data.forEach(entry => {
+          document.getElementById("log").value += `${entry.sender}: ${entry.message}\n`;
+        });
+      } else {
+        const prefix = data.to ? `[Privado de ${data.from} → ${data.to}]` : `${data.from}:`;
+        document.getElementById("log").value += `${prefix} ${data.message}\n`;
+      }
+    };
+
+  </script>
+</body>
+</html>
