@@ -226,8 +226,9 @@ wss.on("connection", function connection(ws, req) {
           onlineUsers: Array.from(onlineUsers),
           certificate: user.certificate,
           privateKey: user.privateKey,
+          // Adicionamos as chaves públicas de TODOS os usuários
           publicKeys: loadUsers().reduce((acc, u) => {
-            if (u.username !== user.username && u.certificate) acc[u.username] = u.certificate;
+            acc[u.username] = u.certificate; // Enviamos o certificado completo
             return acc;
           }, {})
         }));
@@ -268,12 +269,13 @@ wss.on("connection", function connection(ws, req) {
               const isSender = client === ws;
               
               client.send(JSON.stringify({
+                type: "message", // Campo adicionado aqui
                 from: ws.cn,
                 message: isRecipient && message.payload.encrypted ? 
-                        message.payload.encrypted : // Envia criptografado apenas para o destinatário
-                        message.payload.content,    // Envia plano para o remetente e mensagens públicas
+                        message.payload.encrypted : 
+                        message.payload.content,
                 to: message.payload.to,
-                encrypted: isRecipient && !!message.payload.encrypted // Marca como criptografado apenas para o destinatário
+                encrypted: isRecipient && !!message.payload.encrypted
               }));
             }
           }
@@ -309,3 +311,21 @@ function broadcastOnlineUsers() {
 server.listen(8443, () => {
   console.log("Servidor rodando em https://localhost:8443");
 });
+
+// Função para salvar mensagens no log (ATUALIZADA)
+function saveToLog(entry) {
+  try {
+    const logs = fs.existsSync(logFile) ? JSON.parse(fs.readFileSync(logFile)) : [];
+    
+    // Adicionamos uma flag para mensagens privadas
+    const newEntry = {
+      ...entry,
+      isPrivate: !!entry.to
+    };
+    
+    logs.push(newEntry);
+    fs.writeFileSync(logFile, JSON.stringify(logs, null, 2));
+  } catch (e) {
+    console.error("Erro ao salvar no log:", e);
+  }
+}

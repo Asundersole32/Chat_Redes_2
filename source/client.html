@@ -174,7 +174,12 @@
             updateOnlineUsers(data.users);
             break;
           case "message":
-            addMessageToLog(data.from, data.message, data.to, data.encrypted);
+            // Descriptografa se for mensagem privada para este usuário
+            let messageContent = data.message;
+            if (data.encrypted && data.to === username) {
+              messageContent = decryptMessage(data.message);
+            }
+            addMessageToLog(data.from, messageContent, data.to, data.encrypted);
             break;
           default:
             console.log("Mensagem não tratada:", data);
@@ -193,6 +198,21 @@
       updateStatus("Registro bem-sucedido! Faça login.", "success");
     }
 
+    function decryptMessage(encryptedMessage) {
+      try {
+        const privateKey = getPrivateKey();
+        if (!privateKey) return encryptedMessage;
+        
+        return privateKey.decrypt(
+          forge.util.decode64(encryptedMessage), 
+          'RSA-OAEP'
+        );
+      } catch (e) {
+        console.error("Erro ao descriptografar:", e);
+        return "[mensagem criptografada inválida]";
+      }
+    }
+
     // Sucesso no login
     function handleLoginSuccess(data) {
       privateKeyPem = data.privateKey;
@@ -204,9 +224,18 @@
       document.getElementById('auth-section').style.display = 'none';
       document.getElementById('chat-section').style.display = 'block';
       
-      // Carrega histórico
+      // Carrega histórico com descriptografia adequada
       if (data.history && Array.isArray(data.history)) {
         data.history.forEach(msg => {
+          // Determina se a mensagem é para o usuário atual
+          const isForMe = msg.to === username;
+          const isPrivate = !!msg.to;
+          
+          // Descriptografa se for uma mensagem privada para este usuário
+          if (isPrivate && isForMe && msg.encrypted) {
+            msg.message = decryptMessage(msg.message);
+          }
+          
           addMessageToLog(msg.sender, msg.message, msg.to, msg.encrypted);
         });
       }
@@ -214,6 +243,7 @@
       // Atualiza lista de usuários
       if (data.onlineUsers) updateOnlineUsers(data.onlineUsers);
     }
+
 
     // Atualiza lista de usuários online
     function updateOnlineUsers(users) {
@@ -301,9 +331,6 @@
       if (!privateKey) return;
       
       try {
-        // Mostra a mensagem imediatamente para o remetente (não criptografada)
-        addMessageToLog(username, msg, recipient, false);
-        
         const payload = {
           content: msg,
           to: recipient || null,
@@ -347,30 +374,6 @@
 
     // Adiciona mensagem ao log
     function addMessageToLog(sender, message, recipient, isEncrypted) {
-      let messageContent = message;
-      let encryptedNote = "";
-      
-      // Só tenta descriptografar se:
-      // 1. É uma mensagem marcada como criptografada
-      // 2. É destinada ao usuário atual
-      // 3. Parece ser um payload criptografado válido (base64)
-      if (isEncrypted && recipient === username && /^[a-zA-Z0-9+/=]+$/.test(message)) {
-        try {
-          const privateKey = getPrivateKey();
-          if (privateKey) {
-            messageContent = privateKey.decrypt(
-              forge.util.decode64(message), 
-              'RSA-OAEP'
-            );
-            encryptedNote = "<div class='encrypted-indicator'>(privado)</div>";
-          }
-        } catch (e) {
-          console.error("Erro ao descriptografar:", e);
-          messageContent = "[mensagem criptografada inválida]";
-        }
-      }
-      
-      // Restante da função (criação dos elementos HTML) permanece igual
       const log = document.getElementById("log");
       const messageContainer = document.createElement("div");
       messageContainer.className = "message-container";
@@ -378,20 +381,29 @@
       const messageDiv = document.createElement("div");
       messageDiv.className = `message ${sender === username ? 'sent' : 'received'}`;
       
+      let prefix = "";
+      let encryptedNote = "";
+      
       if (recipient) {
         messageDiv.classList.add("private");
-        const prefix = sender === username ? `Para ${recipient}:` : `${sender} (privado):`;
-        messageDiv.innerHTML = `<div class="sender-name">${prefix}</div>
-                              ${messageContent}${encryptedNote}`;
-      } else {
-        const prefix = sender === username ? "" : `${sender}:`;
-        messageDiv.innerHTML = prefix ? `<div class="sender-name">${prefix}</div>${messageContent}` : messageContent;
+        prefix = sender === username ? `Para ${recipient}:` : `${sender} (privado):`;
+        
+        if (isEncrypted && recipient === username) {
+          encryptedNote = "<div class='encrypted-indicator'>(privado)</div>";
+        }
+      } else if (sender !== username) {
+        prefix = `${sender}:`;
       }
+      
+      messageDiv.innerHTML = prefix 
+        ? `<div class="sender-name">${prefix}</div>${message}${encryptedNote}`
+        : message;
       
       messageContainer.appendChild(messageDiv);
       log.appendChild(messageContainer);
       log.scrollTop = log.scrollHeight;
     }
+
     // Helper functions
     function getPrivateKey() {
       try {
