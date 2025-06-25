@@ -1,36 +1,37 @@
 <!DOCTYPE html>
 <html>
 <head>
+  <meta charset="UTF-8">
   <title>Chat Seguro</title>
   <style>
-    body { 
-      font-family: Arial, sans-serif; 
-      max-width: 800px; 
-      margin: 0 auto; 
-      padding: 20px; 
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
     }
-    #auth-section, #chat-section { 
-      background: #f5f5f5; 
-      padding: 20px; 
-      border-radius: 8px; 
-      margin-bottom: 20px; 
+    #auth-section, #chat-section {
+      background: #f5f5f5;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
     }
-    #chat-section { 
-      display: none; 
+    #chat-section {
+      display: none;
     }
-    #online-users { 
-      background: #e9f7fe; 
-      padding: 15px; 
-      border-radius: 8px; 
-      margin-bottom: 15px; 
+    #online-users {
+      background: #e9f7fe;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 15px;
     }
-    #log { 
-      width: 100%; 
-      height: 300px; 
-      margin-bottom: 10px; 
-      padding: 10px; 
-      border: 1px solid #ddd; 
-      border-radius: 4px; 
+    #log {
+      width: 100%;
+      height: 300px;
+      margin-bottom: 10px;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
       overflow-y: auto;
       display: flex;
       flex-direction: column;
@@ -64,39 +65,41 @@
       font-weight: bold;
       margin-bottom: 4px;
     }
-    input, button { 
-      padding: 8px 12px; 
-      margin: 5px 0; 
+    input, button, select {
+      padding: 8px 12px;
+      margin: 5px 0;
     }
-    button { 
-      background: #4CAF50; 
-      color: white; 
-      border: none; 
-      border-radius: 4px; 
-      cursor: pointer; 
+    button {
+      background: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
     }
-    button:hover { 
-      background: #45a049; 
+    button:hover {
+      background: #45a049;
     }
-    .user-list { 
-      display: flex; 
-      flex-wrap: wrap; 
-      gap: 8px; 
+    .user-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
     }
-    .user-badge { 
-      background: #4CAF50; 
-      color: white; 
-      padding: 5px 10px; 
-      border-radius: 15px; 
+    .user-badge {
+      background: #4CAF50;
+      color: white;
+      padding: 5px 10px;
+      border-radius: 15px;
     }
-    .private-btn { 
-      background: #2196F3; 
+    .error {
+      color: red;
     }
-    .error { 
-      color: red; 
+    .success {
+      color: green;
     }
-    .success { 
-      color: green; 
+    .encrypted-indicator {
+      font-size: 0.7em;
+      color: #666;
+      font-style: italic;
     }
   </style>
 </head>
@@ -104,8 +107,8 @@
   <div id="auth-section">
     <h2>Chat Seguro</h2>
     <div>
-      <input id="username" placeholder="Nome de usuário" /><br>
-      <input id="password" type="password" placeholder="Senha" /><br>
+      <input id="username" placeholder="Nome de usuário"><br>
+      <input id="password" type="password" placeholder="Senha"><br>
       <button onclick="register()">Registrar</button>
       <button onclick="login()">Login</button>
     </div>
@@ -123,7 +126,7 @@
     <div id="log"></div>
     
     <div>
-      <input id="msg" placeholder="Digite sua mensagem" style="width: 70%;" />
+      <input id="msg" placeholder="Digite sua mensagem" style="width: 70%;">
       <select id="recipient" style="padding: 8px;">
         <option value="">Todos</option>
       </select>
@@ -133,112 +136,148 @@
 
   <script src="https://cdn.jsdelivr.net/npm/node-forge@1.3.1/dist/forge.min.js"></script>
   <script>
-    let ws;
-    let privateKeyPem;
-    let certificatePem;
-    let username;
-    let onlineUsers = [];
+    // Variáveis globais
+    let ws, privateKeyPem, certificatePem, username, onlineUsers = [], publicKeys = {};
 
-    function getPrivateKey() {
-      try {
-        return forge.pki.privateKeyFromPem(privateKeyPem);
-      } catch (e) {
-        console.error("Erro ao converter chave privada:", e);
-        showError("Erro na chave de segurança. Faça login novamente.");
-        return null;
-      }
-    }
-
+    // Conexão WebSocket
     function connectWebSocket() {
       try {
         ws = new WebSocket("wss://localhost:8443");
         
-        ws.onopen = () => {
-          document.getElementById('auth-status').textContent = "Conectado ao servidor";
-          document.getElementById('auth-status').className = "success";
-        };
-        
-        ws.onmessage = e => {
-          try {
-            const data = JSON.parse(e.data);
-            
-            if (data.error) {
-              showError(data.error);
-            } 
-            else if (data.type === "register_success") {
-              privateKeyPem = data.privateKey;
-              certificatePem = data.certificate;
-              username = data.username;
-              showMessage("Registro bem-sucedido! Faça login.", "success");
-            }
-            else if (data.type === "login_success") {
-              privateKeyPem = data.privateKey;
-              certificatePem = data.certificate;
-              username = data.username;
-              document.getElementById('current-user').textContent = username;
-              showChatSection();
-              
-              if (data.history && Array.isArray(data.history)) {
-                data.history.forEach(entry => {
-                  addMessageToLog(entry.sender, entry.message, entry.to);
-                });
-              }
-              
-              if (data.onlineUsers && Array.isArray(data.onlineUsers)) {
-                updateOnlineUsers(data.onlineUsers);
-              }
-            }
-            else if (data.type === "online_users") {
-              if (data.users && Array.isArray(data.users)) {
-                updateOnlineUsers(data.users);
-              }
-            }
-            else if (data.type === "message") {
-              if (data.from && data.message) {
-                addMessageToLog(data.from, data.message, data.to);
-              }
-            }
-          } catch (e) {
-            console.error("Erro ao processar mensagem:", e);
-            showError("Erro ao processar mensagem do servidor");
-          }
-        };
-        
-        ws.onerror = (err) => {
-          showError("Erro de conexão: " + (err.message || "Desconhecido"));
-        };
-
-        ws.onclose = () => {
-          showError("Conexão fechada. Recarregue a página para reconectar.");
-        };
+        ws.onopen = () => updateStatus("Conectado ao servidor", "success");
+        ws.onmessage = handleMessage;
+        ws.onerror = (err) => updateStatus("Erro de conexão: " + (err.message || "Desconhecido"), "error");
+        ws.onclose = () => updateStatus("Conexão fechada. Recarregue para reconectar.", "error");
       } catch (e) {
-        showError("Erro ao conectar: " + e.message);
+        updateStatus("Erro ao conectar: " + e.message, "error");
       }
     }
 
-    function showChatSection() {
+    // Manipulador de mensagens
+    function handleMessage(e) {
+      try {
+        const data = JSON.parse(e.data);
+        
+        if (data.error) {
+          updateStatus(data.error, "error");
+          return;
+        }
+        
+        switch(data.type) {
+          case "register_success":
+            handleRegisterSuccess(data);
+            break;
+          case "login_success":
+            handleLoginSuccess(data);
+            break;
+          case "online_users":
+            updateOnlineUsers(data.users);
+            break;
+          case "message":
+            // Descriptografa se for mensagem privada para este usuário
+            let messageContent = data.message;
+            if (data.encrypted && data.to === username) {
+              messageContent = decryptMessage(data.message);
+            }
+            addMessageToLog(data.from, messageContent, data.to, data.encrypted);
+            break;
+          default:
+            console.log("Mensagem não tratada:", data);
+        }
+      } catch (e) {
+        console.error("Erro ao processar mensagem:", e);
+        updateStatus("Erro ao processar mensagem", "error");
+      }
+    }
+
+    // Sucesso no registro
+    function handleRegisterSuccess(data) {
+      privateKeyPem = data.privateKey;
+      certificatePem = data.certificate;
+      username = data.username;
+      updateStatus("Registro bem-sucedido! Faça login.", "success");
+    }
+
+    function decryptMessage(encryptedMessage) {
+      try {
+        const privateKey = getPrivateKey();
+        if (!privateKey) return encryptedMessage;
+        
+        return privateKey.decrypt(
+          forge.util.decode64(encryptedMessage), 
+          'RSA-OAEP'
+        );
+      } catch (e) {
+        console.error("Erro ao descriptografar:", e);
+        return "[mensagem criptografada inválida]";
+      }
+    }
+
+    // Sucesso no login
+    function handleLoginSuccess(data) {
+      privateKeyPem = data.privateKey;
+      certificatePem = data.certificate;
+      username = data.username;
+      publicKeys = data.publicKeys || {};
+      
+      document.getElementById('current-user').textContent = username;
       document.getElementById('auth-section').style.display = 'none';
       document.getElementById('chat-section').style.display = 'block';
+      
+      // Carrega histórico com descriptografia adequada
+      if (data.history && Array.isArray(data.history)) {
+        data.history.forEach(msg => {
+          // Determina se a mensagem é para o usuário atual
+          const isForMe = msg.to === username;
+          const isPrivate = !!msg.to;
+          
+          // Descriptografa se for uma mensagem privada para este usuário
+          if (isPrivate && isForMe && msg.encrypted) {
+            msg.message = decryptMessage(msg.message);
+          }
+          
+          addMessageToLog(msg.sender, msg.message, msg.to, msg.encrypted);
+        });
+      }
+      
+      // Atualiza lista de usuários
+      if (data.onlineUsers) updateOnlineUsers(data.onlineUsers);
     }
 
-    function showMessage(msg, type = "") {
-      const status = document.getElementById('auth-status');
-      status.textContent = msg;
-      status.className = type;
+
+    // Atualiza lista de usuários online
+    function updateOnlineUsers(users) {
+      onlineUsers = users.filter(u => u !== username);
+      document.getElementById('online-count').textContent = onlineUsers.length;
+      
+      const usersList = document.getElementById('users-list');
+      usersList.innerHTML = '';
+      
+      const recipientSelect = document.getElementById('recipient');
+      recipientSelect.innerHTML = '<option value="">Todos</option>';
+      
+      onlineUsers.forEach(user => {
+        // Adiciona badge
+        const badge = document.createElement('div');
+        badge.className = 'user-badge';
+        badge.textContent = user;
+        usersList.appendChild(badge);
+        
+        // Adiciona opção de destinatário
+        const option = document.createElement('option');
+        option.value = user;
+        option.textContent = user;
+        recipientSelect.appendChild(option);
+      });
     }
 
-    function showError(msg) {
-      const status = document.getElementById('auth-status');
-      status.textContent = msg;
-      status.className = "error";
-    }
-
+    // Registro
     function register() {
       const username = document.getElementById("username").value.trim();
       const password = document.getElementById("password").value;
       
       if (!username || !password) {
-        showError("Username e password são obrigatórios");
+        updateStatus("Username e password são obrigatórios", "error");
         return;
       }
       
@@ -255,12 +294,13 @@
       }));
     }
 
+    // Login
     function login() {
       const username = document.getElementById("username").value.trim();
       const password = document.getElementById("password").value;
       
       if (!username || !password) {
-        showError("Username e password são obrigatórios");
+        updateStatus("Username e password são obrigatórios", "error");
         return;
       }
       
@@ -277,99 +317,112 @@
       }));
     }
 
+    // Envio de mensagens
     function sendMessage() {
       const msg = document.getElementById("msg").value.trim();
       const recipient = document.getElementById("recipient").value;
       
       if (!msg) {
-        showError("Digite uma mensagem");
+        updateStatus("Digite uma mensagem", "error");
         return;
       }
       
       const privateKey = getPrivateKey();
-      if (!privateKey) {
-        return;
-      }
+      if (!privateKey) return;
       
       try {
+        const payload = {
+          content: msg,
+          to: recipient || null,
+          encrypted: null
+        };
+        
+        // Criptografa apenas se for mensagem privada
+        if (recipient) {
+          const recipientCert = publicKeys[recipient];
+          if (recipientCert) {
+            try {
+              const cert = forge.pki.certificateFromPem(recipientCert);
+              payload.encrypted = forge.util.encode64(
+                cert.publicKey.encrypt(msg, 'RSA-OAEP')
+              );
+            } catch (e) {
+              console.error("Erro ao criptografar:", e);
+              updateStatus("Erro ao criptografar mensagem", "error");
+              return;
+            }
+          }
+        }
+        
+        // Assina o payload completo
         const md = forge.md.sha256.create();
-        md.update(msg, "utf8");
+        md.update(JSON.stringify(payload), 'utf8');
         const signature = forge.util.encode64(privateKey.sign(md));
         
         ws.send(JSON.stringify({
-          message: msg,
+          payload: payload,
           signature: signature,
-          certificate: certificatePem,
-          to: recipient || null
+          certificate: certificatePem
         }));
         
         document.getElementById("msg").value = "";
       } catch (e) {
-        console.error("Erro ao assinar mensagem:", e);
-        showError("Erro ao enviar mensagem");
+        console.error("Erro ao enviar mensagem:", e);
+        updateStatus("Erro ao enviar mensagem", "error");
       }
     }
 
-    function addMessageToLog(sender, message, recipient) {
+    // Adiciona mensagem ao log
+    function addMessageToLog(sender, message, recipient, isEncrypted) {
       const log = document.getElementById("log");
       const messageContainer = document.createElement("div");
       messageContainer.className = "message-container";
       
       const messageDiv = document.createElement("div");
-      messageDiv.className = "message";
+      messageDiv.className = `message ${sender === username ? 'sent' : 'received'}`;
       
-      if (sender === username) {
-        // Mensagem enviada pelo usuário atual
-        messageDiv.classList.add("sent");
-        if (recipient) {
-          messageDiv.innerHTML = `<div class="sender-name">Para ${recipient}:</div>${message}`;
-          messageDiv.classList.add("private");
-        } else {
-          messageDiv.textContent = message;
+      let prefix = "";
+      let encryptedNote = "";
+      
+      if (recipient) {
+        messageDiv.classList.add("private");
+        prefix = sender === username ? `Para ${recipient}:` : `${sender} (privado):`;
+        
+        if (isEncrypted && recipient === username) {
+          encryptedNote = "<div class='encrypted-indicator'>(privado)</div>";
         }
-      } else {
-        // Mensagem recebida de outro usuário
-        messageDiv.classList.add("received");
-        if (recipient && recipient === username) {
-          messageDiv.innerHTML = `<div class="sender-name">${sender} (privado):</div>${message}`;
-          messageDiv.classList.add("private");
-        } else if (!recipient) {
-          messageDiv.innerHTML = `<div class="sender-name">${sender}:</div>${message}`;
-        } else {
-          // Mensagem privada para outro usuário (não mostra)
-          return;
-        }
+      } else if (sender !== username) {
+        prefix = `${sender}:`;
       }
+      
+      messageDiv.innerHTML = prefix 
+        ? `<div class="sender-name">${prefix}</div>${message}${encryptedNote}`
+        : message;
       
       messageContainer.appendChild(messageDiv);
       log.appendChild(messageContainer);
       log.scrollTop = log.scrollHeight;
     }
 
-    function updateOnlineUsers(users) {
-      onlineUsers = users.filter(u => u !== username);
-      document.getElementById('online-count').textContent = onlineUsers.length;
-      
-      const usersList = document.getElementById('users-list');
-      usersList.innerHTML = '';
-      
-      const recipientSelect = document.getElementById('recipient');
-      recipientSelect.innerHTML = '<option value="">Todos</option>';
-      
-      onlineUsers.forEach(user => {
-        const badge = document.createElement('div');
-        badge.className = 'user-badge';
-        badge.textContent = user;
-        usersList.appendChild(badge);
-        
-        const option = document.createElement('option');
-        option.value = user;
-        option.textContent = user;
-        recipientSelect.appendChild(option);
-      });
+    // Helper functions
+    function getPrivateKey() {
+      try {
+        return privateKeyPem ? forge.pki.privateKeyFromPem(privateKeyPem) : null;
+      } catch (e) {
+        console.error("Erro ao obter chave privada:", e);
+        updateStatus("Erro na chave de segurança", "error");
+        return null;
+      }
     }
 
-    window.onload = connectWebSocket;
+    function updateStatus(msg, type) {
+      const status = document.getElementById('auth-status');
+      status.textContent = msg;
+      status.className = type || "";
+    }
+
+    // Inicia conexão quando a página carrega
+    window.addEventListener('DOMContentLoaded', connectWebSocket);
   </script>
 </body>
 </html>
