@@ -373,6 +373,7 @@
     }
 
     // Adiciona mensagem ao log
+    // Atualizar a função addMessageToLog para destacar melhor mensagens efêmeras
     function addMessageToLog(sender, message, recipient, isEncrypted) {
       const log = document.getElementById("log");
       const messageContainer = document.createElement("div");
@@ -386,10 +387,10 @@
       
       if (recipient) {
         messageDiv.classList.add("private");
-        prefix = sender === username ? `Para ${recipient}:` : `${sender} (privado):`;
+        prefix = sender === username ? `Para ${recipient}:` : `${sender} (privado - apenas nesta sessão):`;
         
         if (isEncrypted && recipient === username) {
-          encryptedNote = "<div class='encrypted-indicator'>(privado)</div>";
+          encryptedNote = "<div class='encrypted-indicator'>(mensagem privada efêmera)</div>";
         }
       } else if (sender !== username) {
         prefix = `${sender}:`;

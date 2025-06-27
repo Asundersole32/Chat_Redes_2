@@ -43,11 +43,20 @@ if (!fs.existsSync(logFile)) fs.writeFileSync(logFile, '[]');
 if (!fs.existsSync(usersFile)) fs.writeFileSync(usersFile, '[]');
 
 // Função para salvar mensagens no log
+// Modificar a função saveToLog para não salvar mensagens privadas
 function saveToLog(entry) {
   try {
     const logs = fs.existsSync(logFile) ? JSON.parse(fs.readFileSync(logFile)) : [];
-    logs.push(entry);
-    fs.writeFileSync(logFile, JSON.stringify(logs, null, 2));
+    
+    // Só salva mensagens públicas (não privadas)
+    if (!entry.to) {
+      logs.push({
+        timestamp: entry.timestamp,
+        sender: entry.sender,
+        message: entry.message
+      });
+      fs.writeFileSync(logFile, JSON.stringify(logs, null, 2));
+    }
   } catch (e) {
     console.error("Erro ao salvar no log:", e);
   }
@@ -219,23 +228,24 @@ wss.on("connection", function connection(ws, req) {
         
         broadcastOnlineUsers();
         
+        // No handler de login, modificar para:
         ws.send(JSON.stringify({
           type: "login_success",
           username: user.username,
-          history: fs.existsSync(logFile) ? JSON.parse(fs.readFileSync(logFile)) : [],
+          history: fs.existsSync(logFile) ? 
+            JSON.parse(fs.readFileSync(logFile)).filter(m => !m.isPrivate) : [],
           onlineUsers: Array.from(onlineUsers),
           certificate: user.certificate,
           privateKey: user.privateKey,
-          // Adicionamos as chaves públicas de TODOS os usuários
           publicKeys: loadUsers().reduce((acc, u) => {
-            acc[u.username] = u.certificate; // Enviamos o certificado completo
+            acc[u.username] = u.certificate;
             return acc;
           }, {})
         }));
-        return;
       }
 
       // Mensagens de chat
+      // Dentro do handler de mensagens, substituir o bloco de mensagens por:
       if (message.payload && message.signature && message.certificate) {
         if (!message.certificate.includes('-----BEGIN CERTIFICATE-----')) throw new Error("Certificado inválido");
         
@@ -249,17 +259,16 @@ wss.on("connection", function connection(ws, req) {
         
         if (!verified) throw new Error("Assinatura inválida");
 
-        const msgToStore = message.payload.encrypted || message.payload.content;
-        if (msgToStore.length > 500) throw new Error("Mensagem muito longa");
+        if (message.payload.content.length > 500) throw new Error("Mensagem muito longa");
 
-        // Salva no log
-        saveToLog({
-          timestamp: Date.now(),
-          sender: ws.cn,
-          to: message.payload.to || null,
-          message: msgToStore,
-          encrypted: !!message.payload.encrypted
-        });
+        // Se for mensagem privada, não salva no log
+        if (!message.payload.to) {
+          saveToLog({
+            timestamp: Date.now(),
+            sender: ws.cn,
+            message: message.payload.content
+          });
+        }
 
         // Broadcast
         wss.clients.forEach(client => {
@@ -269,7 +278,7 @@ wss.on("connection", function connection(ws, req) {
               const isSender = client === ws;
               
               client.send(JSON.stringify({
-                type: "message", // Campo adicionado aqui
+                type: "message",
                 from: ws.cn,
                 message: isRecipient && message.payload.encrypted ? 
                         message.payload.encrypted : 

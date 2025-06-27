@@ -1,34 +1,14 @@
 [
   {
-    "timestamp": 1750781612877,
-    "sender": "erik",
-    "to": "felipe",
-    "message": "PJrdbsVpkI7+0SM8gRdPxL3w4Allmjp5UwarV8uowXkG+w/U67qJHvdmmobsgI/gCTi18qpW+cvvB2Zujl/23tnEAst5Kjb8+hEKXNsU+gFGgDW2BhK8cMvWZpQ9xsDB0hUE6G5Vl0+ozgxizX/pfMTc9SRNXp55wXu7LO6wsMhY+rss52e2XDrYPaqgQP2nvhtDZvZ2g9N99+EejEtughFiKMmb7+F1p0rv2Em7rG6jlUWUqTUIiiY/Z7BvqV+SlELYV3OGsboyO43lDFWe1jXQ6M+YN9uzEsoGDWF5Drl2oOj/RHuvTVT5VsX20KvHw0xK+HLX6sKO2nX6e+e8pg==",
-    "encrypted": true,
-    "isPrivate": true
-  },
-  {
-    "timestamp": 1750783617423,
-    "sender": "erik",
-    "to": null,
-    "message": "Ola",
-    "encrypted": false,
-    "isPrivate": false
-  },
-  {
-    "timestamp": 1750783978722,
-    "sender": "erik",
-    "to": null,
+    "timestamp": 1751061839298,
+    "sender": "viana",
     "message": "Olá",
-    "encrypted": false,
     "isPrivate": false
   },
   {
-    "timestamp": 1750783990817,
+    "timestamp": 1751066530273,
     "sender": "erik",
-    "to": "felipe",
-    "message": "c4t3u+thidFUNQ2uyV6FMSlQDDH5dx1Ju0e0T52ogz8fiADU5GhavWIgWIYEtVmDEQfWA5R3k1Bel8/wWuv+sJpt6MvRkA95cCYDkPUsuMEC84Wzr/tShUneq7A03nkjc4xVE+4pI1RkWaNVHslbcjg5HBjB+VWGpRaM7k/atRM4gHG6RUD/4wlDefDdfe6GI/xJ9yBJ3VwI0Wj4ziFTpAOndbL3eT3Z8sGWjHDt15G9i+9s6jNua9ayZa5UAAsrM1alkui0Pyp71KFnsk8WcPWbKt/vgPja9L2rQQdJgsxmhHfhJYNOSfhDIVMOS7YbhWPQWuODPhIvRLL7DKN8cw==",
-    "encrypted": true,
-    "isPrivate": true
+    "message": "Olá, Boa noite",
+    "isPrivate": false
   }
 ]
